@@ -1,6 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as path from 'path';
 
 export class CdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -12,6 +14,19 @@ export class CdkStack extends cdk.Stack {
       visibilityTimeout: cdk.Duration.seconds(30),
       retentionPeriod: cdk.Duration.days(4),
     });
+
+    // Create Producer Lambda
+    const producerLambda = new lambda.Function(this, 'ProducerLambda', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../src/producer')),
+      environment: {
+        TASK_QUEUE_URL: taskQueue.queueUrl,
+      },
+    });
+
+    //Grant permission to send messages to producer lambda
+    taskQueue.grantSendMessages(producerLambda);
 
     // Output the queue URL
     new cdk.CfnOutput(this, 'TaskQueueUrl', {
